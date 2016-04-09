@@ -43,6 +43,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AlchemyPot\PracticeAlchemyPot.cs" />
     <Compile Include="Grid.cs" />
     <Compile Include="Ingredient.cs" />
     <Compile Include="AlchemyPot\GrandmaAlchemyPot.cs" />
