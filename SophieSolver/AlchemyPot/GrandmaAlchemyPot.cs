@@ -15,9 +15,9 @@ namespace SophieSolver.AlchemyPot
 
         private int[] bonusTable;
 
-        public GrandmaAlchemyPot(int kilnLevel)
+        public GrandmaAlchemyPot(int potLevel)
         {
-            bonusTable = BonusTable[kilnLevel];
+            bonusTable = BonusTable[potLevel];
         }
 
         public int CalculateBonus(PlacedIngredient item, List<Tuple<int, int>> bonusList)
