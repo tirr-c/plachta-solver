@@ -45,7 +45,7 @@ namespace SophieSolver
             for (int i = 0; i < size; i++)
                 bonus[i] = input.ReadLine();
             int stateLevel = int.Parse(input.ReadLine());
-            Grid grid = new Grid(size, shape, element, bonus, new Kiln.GrandmaKiln(1));
+            Grid grid = new Grid(size, shape, element, bonus, new AlchemyPot.GrandmaAlchemyPot(1));
 
             int cntIngredient = int.Parse(input.ReadLine());
             Ingredient[] ingredients = new Ingredient[cntIngredient];

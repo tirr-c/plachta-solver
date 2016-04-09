@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SophieSolver.Kiln
+namespace SophieSolver.AlchemyPot
 {
-    class GrandmaKiln : IKiln
+    class GrandmaAlchemyPot : IAlchemyPot
     {
         private static int[][] BonusTable = new int[][] {
             new int[] { 0, 2, 4, 6 },
@@ -15,7 +15,7 @@ namespace SophieSolver.Kiln
 
         private int[] bonusTable;
 
-        public GrandmaKiln(int kilnLevel)
+        public GrandmaAlchemyPot(int kilnLevel)
         {
             bonusTable = BonusTable[kilnLevel];
         }

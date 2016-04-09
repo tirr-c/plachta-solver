@@ -20,7 +20,7 @@ namespace SophieSolver
         private List<PlacedIngredient> ingredients;
         private List<bool> ingredientShadowed;
 
-        private Kiln.IKiln kiln;
+        private AlchemyPot.IAlchemyPot kiln;
 
         public int Size { get { return size; } }
         public int[] CategoryValue { get { return categoryValue; } }
@@ -41,7 +41,7 @@ namespace SophieSolver
             ingredientShadowed = new List<bool>();
         }
 
-        public Grid(int size, string[] shape, string[] element, string[] startBonusLevel, Kiln.IKiln kiln)
+        public Grid(int size, string[] shape, string[] element, string[] startBonusLevel, AlchemyPot.IAlchemyPot kiln)
         {
             this.size = size;
             this.shape = new bool[size, size];

@@ -45,8 +45,8 @@
   <ItemGroup>
     <Compile Include="Grid.cs" />
     <Compile Include="Ingredient.cs" />
-    <Compile Include="Kiln\GrandmaKiln.cs" />
-    <Compile Include="Kiln\IKiln.cs" />
+    <Compile Include="AlchemyPot\GrandmaAlchemyPot.cs" />
+    <Compile Include="AlchemyPot\IAlchemyPot.cs" />
     <Compile Include="PlacedIngredient.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
