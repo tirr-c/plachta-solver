@@ -47,7 +47,7 @@ namespace SophieSolver
             string[] gridProp = input.ReadLine().Split(' ');
             int stateLevel = int.Parse(gridProp[0]);
             int potColor = int.Parse(gridProp[1]);
-            Grid grid = new Grid(size, shape, element, bonus, new AlchemyPot.PracticeAlchemyPot(1, potColor));
+            Grid grid = new Grid(size, shape, element, bonus, new AlchemyPot.GrandmaAlchemyPot(1));
 
             int cntIngredient = int.Parse(input.ReadLine());
             Ingredient[] ingredients = new Ingredient[cntIngredient];
@@ -102,6 +102,15 @@ namespace SophieSolver
             Console.WriteLine("{0}ms", watch.ElapsedMilliseconds);
             watch.Reset();
 
+            int quality = 0;
+            for (int i = 0; i < optimal.Size; i++)
+            {
+                for (int j = 0; j < optimal.Size; j++)
+                {
+                    if (optimal.IsPlacedAt(i, j)) quality++;
+                }
+            }
+            Console.WriteLine("Solution has the quality of {0}", quality);
             Console.WriteLine("Solution has the category value of:");
             Console.WriteLine(optimal);
             Console.WriteLine("Placement order:");
@@ -180,7 +189,8 @@ namespace SophieSolver
                 {
                     order.Add(list[i][selected[i]]);
                 }
-                return PlaceAsTold(grid.Clone() as Grid, order);
+                var r = PlaceAsTold(grid.Clone() as Grid, order);
+                return r;
             }
             var ingredients = list[current];
             Grid g = null;
@@ -210,7 +220,24 @@ namespace SophieSolver
 
         private static int CompareGrids(Grid lhs, Grid rhs)
         {
-            return lhs.CategoryValue[0] - rhs.CategoryValue[0];
+            int lhscnt = 0, rhscnt = 0;
+            int lhssum = 0, rhssum = 0;
+            for (int i = 0; i < lhs.Size; i++)
+            {
+                for (int j = 0; j < lhs.Size; j++)
+                {
+                    if (lhs.IsPlacedAt(i, j)) lhscnt++;
+                    if (rhs.IsPlacedAt(i, j)) rhscnt++;
+                }
+            }
+            for (int i = 0; i < 4; i++)
+            {
+                lhssum += lhs.CategoryValue[i];
+                rhssum += rhs.CategoryValue[i];
+            }
+            lhssum *= lhscnt;
+            rhssum *= rhscnt;
+            return lhscnt - rhscnt;
         }
     }
 }

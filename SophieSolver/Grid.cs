@@ -136,12 +136,19 @@ namespace SophieSolver
                     }
                 }
             }
+            // TODO: Can't optimize this?
             for (int i = 0; i < size; i++)
             {
                 for (int j = 0; j < size; j++)
                 {
                     chk[i, j] ^= mask[i, j];
-                    if (!IsPlacedAt(i, j) && chk[i, j] && shape[i, j])
+                }
+            }
+            for (int i = 0; i < size; i++)
+            {
+                for (int j = 0; j < size; j++)
+                {
+                    if (chk[i, j] && shape[i, j] && !IsPlacedAt(i, j))
                     {
                         bonusLevel[i, j]++;
                         if (bonusLevel[i, j] > 3) bonusLevel[i, j] = 3;
