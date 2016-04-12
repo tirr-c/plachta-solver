@@ -1,15 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace SophieSolver
 {
     class PriorityQueue<T> where T : IComparable<T>
     {
-        private List<T> list;
+        private List<T> list = new List<T>();
+        private int waitingThreads = 0;
+        public int Count => list.Count;
+        public int MaxWaitingThreads { get; set; }
 
-        public PriorityQueue()
+        public PriorityQueue(int maxWaitingThreads)
         {
-            list = new List<T>();
+            MaxWaitingThreads = maxWaitingThreads;
         }
 
         public void Enqueue(T item)
@@ -59,5 +63,39 @@ namespace SophieSolver
             }
             return ret;
         }
+
+        public async Task<T> BlockingDequeueAsync()
+        {
+            bool waiting = false;
+            while (true)
+            {
+                try
+                {
+                    if (waitingThreads >= MaxWaitingThreads)
+                        throw new QueueExhaustedException();
+                    T ret = Dequeue();
+                    if (waiting) System.Threading.Interlocked.Decrement(ref waitingThreads);
+                    return ret;
+                }
+                catch (InvalidOperationException)
+                {
+                    waiting = true;
+                    System.Threading.Interlocked.Increment(ref waitingThreads);
+                    await Task.Yield();
+                }
+            }
+        }
+    }
+
+    [Serializable]
+    public class QueueExhaustedException : Exception
+    {
+        public QueueExhaustedException() { }
+        public QueueExhaustedException(string message) : base(message) { }
+        public QueueExhaustedException(string message, Exception inner) : base(message, inner) { }
+        protected QueueExhaustedException(
+          System.Runtime.Serialization.SerializationInfo info,
+          System.Runtime.Serialization.StreamingContext context) : base(info, context)
+        { }
     }
 }

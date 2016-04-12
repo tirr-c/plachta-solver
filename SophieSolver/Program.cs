@@ -80,15 +80,10 @@ namespace SophieSolver
             Console.Write("Placing... ");
             watch.Start();
             var range = new List<int>();
-            for (int i = 0; i < ingredients.Length; i++)
-            {
-                range.Add(i);
-            }
+            for (int i = 0; i < 8; i++) range.Add(i);
+            var queue = new PriorityQueue<GridQueueItem>(8);
             var taskPlace = from i in range
-                            select Task.Run(() =>
-                            {
-                                return Place(grid, validPlacement, i);
-                            });
+                            select PlaceTask(i, queue);
             Grid optimal = null;
             foreach (var g in Task.WhenAll(taskPlace).Result)
             {
@@ -121,6 +116,45 @@ namespace SophieSolver
             }
         }
 
+        private static async Task<Grid> PlaceTask(int id, PriorityQueue<GridQueueItem> queue)
+        {
+            Grid ret = null;
+            try
+            {
+                while (true)
+                {
+                    GridQueueItem item = await queue.BlockingDequeueAsync();
+                    await Task.Yield();
+                    if (item.Done)
+                    {
+                        Grid doneGrid = item.Grid;
+                        doneGrid.FinalizeValue();
+                        if (ret == null)
+                        {
+                            ret = doneGrid;
+                            Console.WriteLine("[{0}] Initial optimal: {1}", id, ret);
+                        }
+                        else
+                        {
+                            if (CompareGrids(ret, doneGrid) < 0)
+                            {
+                                ret = doneGrid;
+                                Console.WriteLine("[{0}] New optimal: {1}", id, ret);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        item.EnqueueCandidates(queue);
+                    }
+                }
+            }
+            catch (QueueExhaustedException)
+            {
+            }
+            return ret;
+        }
+
         private static async Task<List<PlacedIngredient>> TestPlacement(Grid grid, Ingredient item, int available)
         {
             return await Task.Run(() =>
@@ -138,86 +172,7 @@ namespace SophieSolver
                 return ret;
             });
         }
-
-        private static Grid Place(Grid grid, List<PlacedIngredient>[] list, int startWith)
-        {
-            bool[] chkItem = new bool[list.Length];
-            var l = new List<int>();
-            chkItem[startWith] = true;
-            l.Add(startWith);
-            return BuildOrderAndPlace(grid, list, chkItem, l);
-        }
-
-        private static Grid BuildOrderAndPlace(Grid grid, List<PlacedIngredient>[] list, bool[] chk, List<int> order)
-        {
-            if (order.Count >= list.Length)
-            {
-                var newlist = new List<PlacedIngredient>[order.Count];
-                for (int i = 0; i < order.Count; i++)
-                {
-                    newlist[i] = list[order[i]];
-                }
-                var r = SelectShapeAndPlace(grid, newlist, new List<int>());
-                Console.WriteLine(r);
-                return r;
-            }
-            Grid g = null;
-            for (int i = 0; i < list.Length; i++)
-            {
-                if (chk[i]) continue;
-                chk[i] = true;
-                order.Add(i);
-                var ret = BuildOrderAndPlace(grid, list, chk, order);
-                if (g == null) g = ret;
-                else
-                {
-                    if (CompareGrids(g, ret) < 0) g = ret;
-                }
-                order.RemoveAt(order.Count - 1);
-                chk[i] = false;
-            }
-            return g;
-        }
-
-        private static Grid SelectShapeAndPlace(Grid grid, List<PlacedIngredient>[] list, List<int> selected)
-        {
-            int current = selected.Count;
-            if (current >= list.Length)
-            {
-                var order = new List<PlacedIngredient>();
-                for (int i = 0; i < selected.Count; i++)
-                {
-                    order.Add(list[i][selected[i]]);
-                }
-                var r = PlaceAsTold(grid.Clone() as Grid, order);
-                return r;
-            }
-            var ingredients = list[current];
-            Grid g = null;
-            for (int i = 0; i < ingredients.Count; i++)
-            {
-                selected.Add(i);
-                var ret = SelectShapeAndPlace(grid, list, selected);
-                if (g == null) g = ret;
-                else
-                {
-                    if (CompareGrids(g, ret) < 0) g = ret;
-                }
-                selected.RemoveAt(selected.Count - 1);
-            }
-            return g;
-        }
-
-        private static Grid PlaceAsTold(Grid grid, List<PlacedIngredient> order)
-        {
-            foreach (var item in order)
-            {
-                grid.Place(item);
-            }
-            grid.FinalizeValue();
-            return grid;
-        }
-
+        
         private static int CompareGrids(Grid lhs, Grid rhs)
         {
             int lhscnt = 0, rhscnt = 0;

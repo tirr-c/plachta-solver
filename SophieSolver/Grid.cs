@@ -20,12 +20,40 @@ namespace SophieSolver
         private List<PlacedIngredient> ingredients;
         private List<bool> ingredientShadowed;
 
-        private AlchemyPot.IAlchemyPot kiln;
+        private AlchemyPot.IAlchemyPot pot;
 
         public int Size { get { return size; } }
         public int[] CategoryValue { get { return categoryValue; } }
 
         public List<PlacedIngredient> Ingredients { get { return ingredients; } }
+
+        public int Potential
+        {
+            get
+            {
+                int ret = PlacedCells;
+                for (int i = 0; i < size; i++)
+                    for (int j = 0; j < size; j++)
+                        ret += bonusLevel[i, j];
+                return ret;
+            }
+        }
+        public int PlacedCells
+        {
+            get
+            {
+                int cnt = 0;
+                for (int i = 0; i < ingredients.Count; i++)
+                {
+                    if (ingredientShadowed[i]) continue;
+                    var shape = ingredients[i].Shape;
+                    for (int j = 0; j < 3; j++)
+                        for (int k = 0; k < 3; k++)
+                            cnt++;
+                }
+                return cnt;
+            }
+        }
 
         private Grid(int size)
         {
@@ -51,7 +79,7 @@ namespace SophieSolver
             for (int i = 0; i < 4; i++) this.values[i] = new Dictionary<int, int>();
             this.categoryValue = new int[4];
             this.gridCount = 0;
-            this.kiln = kiln;
+            this.pot = kiln;
 
             for (int i = 0; i < size; i++)
                 for (int j = 0; j < size; j++)
@@ -110,7 +138,7 @@ namespace SophieSolver
                 }
             }
             if (!values[item.Category].ContainsKey(item.Color)) values[item.Category][item.Color] = 0;
-            values[item.Category][item.Color] += kiln.CalculateBonus(item, bonusList);
+            values[item.Category][item.Color] += pot.CalculateBonus(item, bonusList);
             // Update bonus
             bool[,] chk = new bool[size, size];
             bool[,] mask = new bool[size, size];
@@ -222,11 +250,11 @@ namespace SophieSolver
         public object Clone()
         {
             Grid ret = new Grid(size);
+            ret.shape = shape; // does not change
             for (int i = 0; i < size; i++)
             {
                 for (int j = 0; j < size; j++)
                 {
-                    ret.shape[i, j] = shape[i, j];
                     ret.color[i, j] = color[i, j];
                     ret.bonusLevel[i, j] = bonusLevel[i, j];
                 }
@@ -237,7 +265,7 @@ namespace SophieSolver
                 ret.values[i] = new Dictionary<int, int>(categoryValue[i]);
             }
             ret.gridCount = gridCount;
-            ret.kiln = kiln;
+            ret.pot = pot;
             ret.ingredients.AddRange(ingredients);
             ret.ingredientShadowed.AddRange(ingredientShadowed);
             return ret;
