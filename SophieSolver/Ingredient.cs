@@ -13,11 +13,13 @@ namespace SophieSolver
         protected int value;
         protected int category;
         private string name;
+        private int count;
         public string Name { get { return name; } }
         public bool[,] Shape { get { return shape; } }
         public int Color { get { return color; } }
         public int Value { get { return value; } }
         public int Category { get { return category; } }
+        public int CellCount { get { return count; } }
 
         protected Ingredient(Ingredient item)
         {
@@ -27,6 +29,7 @@ namespace SophieSolver
             this.value = item.value;
             this.name = item.name;
             this.category = item.category;
+            this.count = item.count;
         }
 
         public Ingredient(string name, string[] shape, int color, int value, int category)
@@ -36,7 +39,12 @@ namespace SophieSolver
             this.color = color;
             this.value = value;
             this.category = category;
-            for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++) this.shape[i, j] = (shape[i][j] == '*');
+            for (int i = 0; i < 3; i++)
+                for (int j = 0; j < 3; j++)
+                {
+                    this.shape[i, j] = (shape[i][j] == '*');
+                    count += this.shape[i, j] ? 1 : 0;
+                }
         }
 
         public List<ShapeStatus> GetPlacementToCheck(ShapeStatus[] statusToTest)

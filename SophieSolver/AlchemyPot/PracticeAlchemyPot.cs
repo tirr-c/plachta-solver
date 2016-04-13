@@ -24,36 +24,25 @@ namespace SophieSolver.AlchemyPot
 
         public int CalculateBonus(PlacedIngredient item, List<Tuple<int, int>> bonusList)
         {
-            int bonusCount = 0;
-            int potColorCount = 0;
+            int[] colorBonus = new int[5];
             int sameColorCount = 0;
             foreach (var bonus in bonusList)
             {
-                int currentBonus = bonusTable[bonus.Item2];
+                colorBonus[bonus.Item1] += bonusTable[bonus.Item2] * 2;
                 if (bonus.Item1 == item.Color)
                 {
-                    currentBonus += bonus.Item2;
+                    colorBonus[bonus.Item1] += bonus.Item2 * 2;
                     sameColorCount++;
                 }
-                if (bonus.Item2 == potColor)
-                {
-                    potColorCount += currentBonus;
-                }
-                else
-                {
-                    bonusCount += currentBonus;
-                }
             }
-            int ret = item.Value + bonusCount;
-            if (item.Color == potColor)
+            colorBonus[item.Color] += sameColorCount;
+            colorBonus[potColor] = colorBonus[potColor] * 3 / 2;
+            int ret = item.Value * 2;
+            for (int i = 0; i < 5; i++)
             {
-                ret += (2 * potColorCount + sameColorCount) * 3 / 4;
+                ret += colorBonus[i];
             }
-            else
-            {
-                ret += (3 * potColorCount + sameColorCount) / 2;
-            }
-            return ret;
+            return ret / 2;
         }
     }
 }

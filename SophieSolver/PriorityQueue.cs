@@ -11,6 +11,8 @@ namespace SophieSolver
         public int Count => list.Count;
         public int MaxWaitingThreads { get; set; }
 
+        private object queueLock = new object();
+
         public PriorityQueue(int maxWaitingThreads)
         {
             MaxWaitingThreads = maxWaitingThreads;
@@ -18,7 +20,7 @@ namespace SophieSolver
 
         public void Enqueue(T item)
         {
-            lock (list) {
+            lock (queueLock) {
                 list.Add(item);
                 int current = list.Count - 1;
                 int parent = (current - 1) / 2;
@@ -36,10 +38,10 @@ namespace SophieSolver
 
         public T Dequeue()
         {
-            if (list.Count <= 0) throw new InvalidOperationException("No elements to dequeue");
             T ret;
-            lock (list)
+            lock (queueLock)
             {
+                if (list.Count <= 0) throw new InvalidOperationException("No elements to dequeue");
                 ret = list[0];
                 list[0] = list[list.Count - 1];
                 list.RemoveAt(list.Count - 1);
@@ -79,10 +81,10 @@ namespace SophieSolver
                 }
                 catch (InvalidOperationException)
                 {
+                    if (!waiting) System.Threading.Interlocked.Increment(ref waitingThreads);
                     waiting = true;
-                    System.Threading.Interlocked.Increment(ref waitingThreads);
-                    await Task.Yield();
                 }
+                await Task.Yield();
             }
         }
     }

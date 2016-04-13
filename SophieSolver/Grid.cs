@@ -38,20 +38,12 @@ namespace SophieSolver
                 return ret;
             }
         }
+        private int placedCells;
         public int PlacedCells
         {
             get
             {
-                int cnt = 0;
-                for (int i = 0; i < ingredients.Count; i++)
-                {
-                    if (ingredientShadowed[i]) continue;
-                    var shape = ingredients[i].Shape;
-                    for (int j = 0; j < 3; j++)
-                        for (int k = 0; k < 3; k++)
-                            cnt++;
-                }
-                return cnt;
+                return placedCells;
             }
         }
 
@@ -65,11 +57,12 @@ namespace SophieSolver
             for (int i = 0; i < 4; i++) this.values[i] = new Dictionary<int, int>();
             this.categoryValue = new int[4];
             this.gridCount = 0;
+            this.placedCells = 0;
             ingredients = new List<PlacedIngredient>();
             ingredientShadowed = new List<bool>();
         }
 
-        public Grid(int size, string[] shape, string[] element, string[] startBonusLevel, AlchemyPot.IAlchemyPot kiln)
+        public Grid(int size, string[] shape, string[] element, string[] startBonusLevel, AlchemyPot.IAlchemyPot pot)
         {
             this.size = size;
             this.shape = new bool[size, size];
@@ -79,7 +72,8 @@ namespace SophieSolver
             for (int i = 0; i < 4; i++) this.values[i] = new Dictionary<int, int>();
             this.categoryValue = new int[4];
             this.gridCount = 0;
-            this.pot = kiln;
+            this.placedCells = 0;
+            this.pot = pot;
 
             for (int i = 0; i < size; i++)
                 for (int j = 0; j < size; j++)
@@ -129,10 +123,9 @@ namespace SophieSolver
                 for (int j = 0; j < 3; j++)
                 {
                     int ncol = item.Col + j;
-                    if (item.Shape[i, j])
+                    if (item.Shape[i, j] && bonusLevel[nrow, ncol] > 0)
                     {
                         bonusList.Add(new Tuple<int, int>(color[nrow, ncol], bonusLevel[nrow, ncol]));
-                        
                         bonusLevel[nrow, ncol] = 0;
                     }
                 }
@@ -189,11 +182,13 @@ namespace SophieSolver
                 if (ingredientShadowed[i]) continue;
                 if (item.IsOverlapped(ingredients[i]))
                 {
+                    placedCells -= ingredients[i].CellCount;
                     ingredientShadowed[i] = true;
                 }
             }
             ingredients.Add(item);
             ingredientShadowed.Add(false);
+            placedCells += item.CellCount;
         }
 
         public void FinalizeValue()
@@ -237,9 +232,14 @@ namespace SophieSolver
                     values[i][c] = v;
                 }
             }
+            UpdateCategoryValue();
+        }
 
+        public void UpdateCategoryValue()
+        {
             for (int i = 0; i < 4; i++)
             {
+                categoryValue[i] = 0;
                 foreach (var item in values[i])
                 {
                     categoryValue[i] += item.Value;
@@ -262,9 +262,10 @@ namespace SophieSolver
             for (int i = 0; i < 4; i++)
             {
                 ret.categoryValue[i] = categoryValue[i];
-                ret.values[i] = new Dictionary<int, int>(categoryValue[i]);
+                ret.values[i] = new Dictionary<int, int>(values[i]);
             }
             ret.gridCount = gridCount;
+            ret.placedCells = placedCells;
             ret.pot = pot;
             ret.ingredients.AddRange(ingredients);
             ret.ingredientShadowed.AddRange(ingredientShadowed);

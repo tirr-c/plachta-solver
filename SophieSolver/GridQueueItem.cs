@@ -37,6 +37,7 @@ namespace SophieSolver
             this.grid = grid;
             this.list = list;
             this.check = new List<bool>(list.Length);
+            for (int i = 0; i < list.Length; i++) check.Add(false);
         }
         private GridQueueItem(Grid grid, List<PlacedIngredient>[] list, List<bool> check)
         {
@@ -47,8 +48,8 @@ namespace SophieSolver
 
         public int CompareTo(GridQueueItem other)
         {
-            int deltaCnt = PlacedItemCount - other.PlacedItemCount;
-            if (deltaCnt != 0) return -deltaCnt;
+            //int deltaCnt = PlacedItemCount - other.PlacedItemCount;
+            //if (deltaCnt != 0) return -deltaCnt;
             return grid.Potential - other.grid.Potential;
         }
 
@@ -68,6 +69,7 @@ namespace SophieSolver
                 {
                     Grid newGrid = grid.Clone() as Grid;
                     newGrid.Place(item);
+                    newGrid.UpdateCategoryValue();
                     q.Enqueue(new GridQueueItem(newGrid, list, newCheck));
                 }
             }

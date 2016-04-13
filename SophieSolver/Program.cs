@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics;
 using System.IO;
@@ -18,6 +20,8 @@ namespace SophieSolver
             new ShapeStatus[] { ShapeStatus.None, ShapeStatus.RotatedOnce, ShapeStatus.RotatedTwice, ShapeStatus.RotatedThreeTimes },
         };
 
+        private static bool stop = false;
+        private static int totalCells = 0;
         static void Main(string[] args)
         {
             Stopwatch watch = new Stopwatch();
@@ -47,7 +51,8 @@ namespace SophieSolver
             string[] gridProp = input.ReadLine().Split(' ');
             int stateLevel = int.Parse(gridProp[0]);
             int potColor = int.Parse(gridProp[1]);
-            Grid grid = new Grid(size, shape, element, bonus, new AlchemyPot.GrandmaAlchemyPot(1));
+            var pot = new AlchemyPot.PracticeAlchemyPot(1, potColor);
+            Grid grid = new Grid(size, shape, element, bonus, pot);
 
             int cntIngredient = int.Parse(input.ReadLine());
             Ingredient[] ingredients = new Ingredient[cntIngredient];
@@ -62,6 +67,7 @@ namespace SophieSolver
                 for (int j = 0; j < 3; j++)
                     itemShape[j] = input.ReadLine();
                 ingredients[i] = new Ingredient(itemName, itemShape, itemColor, itemValue, itemCategory);
+                totalCells += ingredients[i].CellCount;
             }
             if (inputRedirected) input.Close();
             watch.Stop();
@@ -82,17 +88,35 @@ namespace SophieSolver
             var range = new List<int>();
             for (int i = 0; i < 8; i++) range.Add(i);
             var queue = new PriorityQueue<GridQueueItem>(8);
+            var resultQueue = new ConcurrentQueue<Grid>();
+            var signal = new ManualResetEventSlim();
+            queue.Enqueue(new GridQueueItem(grid, validPlacement));
             var taskPlace = from i in range
-                            select PlaceTask(i, queue);
+                            select PlaceTask(i, queue, resultQueue, signal);
+            var task = Task.WhenAll(taskPlace);
             Grid optimal = null;
-            foreach (var g in Task.WhenAll(taskPlace).Result)
+            while (true)
             {
-                if (optimal == null) optimal = g;
-                else
+                if (!signal.Wait(1 * 10 * 1000)) break;
+                signal.Reset();
+                while (!resultQueue.IsEmpty)
                 {
-                    if (CompareGrids(optimal, g) < 0) optimal = g;
+                    Grid g;
+                    if (!resultQueue.TryDequeue(out g)) continue;
+                    if (optimal == null)
+                    {
+                        optimal = g;
+                        Console.WriteLine("Initial optimal: {0}", optimal);
+                    }
+                    else if (CompareGrids(optimal, g) <= 0)
+                    {
+                        optimal = g;
+                        Console.WriteLine("New optimal: {0}", optimal);
+                    }
                 }
             }
+            stop = true;
+            task.Wait();
             watch.Stop();
             Console.WriteLine("{0}ms", watch.ElapsedMilliseconds);
             watch.Reset();
@@ -114,14 +138,24 @@ namespace SophieSolver
                 var item = optimal.Ingredients[i];
                 Console.WriteLine("  {0}: {1} at ({2}, {3}) {4}", i, item.Name, item.Row, item.Col, item.Status);
             }
+            Console.WriteLine("Simulation...");
+            grid = new Grid(size, shape, element, bonus, pot);
+            foreach (var item in optimal.Ingredients)
+            {
+                grid.Place(item);
+                grid.UpdateCategoryValue();
+                Console.WriteLine(grid);
+            }
+            grid.FinalizeValue();
+            Console.WriteLine("==> {0}", grid);
         }
 
-        private static async Task<Grid> PlaceTask(int id, PriorityQueue<GridQueueItem> queue)
+        private static async Task<Grid> PlaceTask(int id, PriorityQueue<GridQueueItem> queue, ConcurrentQueue<Grid> resultQueue, ManualResetEventSlim signal)
         {
             Grid ret = null;
             try
             {
-                while (true)
+                while (!stop)
                 {
                     GridQueueItem item = await queue.BlockingDequeueAsync();
                     await Task.Yield();
@@ -132,14 +166,16 @@ namespace SophieSolver
                         if (ret == null)
                         {
                             ret = doneGrid;
-                            Console.WriteLine("[{0}] Initial optimal: {1}", id, ret);
+                            resultQueue.Enqueue(ret);
+                            signal.Set();
                         }
                         else
                         {
                             if (CompareGrids(ret, doneGrid) < 0)
                             {
                                 ret = doneGrid;
-                                Console.WriteLine("[{0}] New optimal: {1}", id, ret);
+                                resultQueue.Enqueue(ret);
+                                signal.Set();
                             }
                         }
                     }
@@ -172,27 +208,49 @@ namespace SophieSolver
                 return ret;
             });
         }
-        
+
+        private static int[][] levels = new int[][]
+        {
+            new int[] { 15, },
+            new int[] { 30, 60, 90, },
+            new int[] { 50, },
+            new int[] { 40, 80, },
+        };
+        private static int[] targetLevel = new int[] { 1, 3, 0, 2, };
+        private static bool[] critical = new bool[] { true, false, false, true };
+        private static double[] coeff = new double[] { 1, 2, 0, 1 };
+
         private static int CompareGrids(Grid lhs, Grid rhs)
         {
-            int lhscnt = 0, rhscnt = 0;
-            int lhssum = 0, rhssum = 0;
-            for (int i = 0; i < lhs.Size; i++)
-            {
-                for (int j = 0; j < lhs.Size; j++)
-                {
-                    if (lhs.IsPlacedAt(i, j)) lhscnt++;
-                    if (rhs.IsPlacedAt(i, j)) rhscnt++;
-                }
-            }
+            double lhssum = 0, rhssum = 0;
+            bool lcritical = true, rcritical = true;
             for (int i = 0; i < 4; i++)
             {
-                lhssum += lhs.CategoryValue[i];
-                rhssum += rhs.CategoryValue[i];
+                if (levels[i].Length == 0) continue;
+                if (targetLevel[i] == 0) continue;
+                int llevel;
+                for (llevel = 0; llevel < levels[i].Length && levels[i][llevel] < lhs.CategoryValue[i]; llevel++)
+                {
+                }
+                if (llevel > targetLevel[i]) llevel = targetLevel[i];
+                int rlevel;
+                for (rlevel = 0; rlevel < levels[i].Length && levels[i][rlevel] < rhs.CategoryValue[i]; rlevel++)
+                {
+                }
+                if (rlevel > targetLevel[i]) rlevel = targetLevel[i];
+                if (critical[i] && llevel < targetLevel[i]) lcritical = false;
+                if (critical[i] && rlevel < targetLevel[i]) rcritical = false;
+                lhssum += Math.Pow(2, llevel) * coeff[i] / Math.Pow(2, targetLevel[i]);
+                rhssum += Math.Pow(2, rlevel) * coeff[i] / Math.Pow(2, targetLevel[i]);
             }
-            lhssum *= lhscnt;
-            rhssum *= rhscnt;
-            return lhscnt - rhscnt;
+            lhssum += lhs.PlacedCells / (double) totalCells;
+            rhssum += rhs.PlacedCells / (double) totalCells;
+            lhssum -= rhssum;
+            if (lcritical && !rcritical) return 1;
+            else if (!lcritical && rcritical) return -1;
+            if (lhssum < 0) return -1;
+            else if (lhssum == 0) return 0;
+            else return 1;
         }
     }
 }
